@@ -1,67 +1,86 @@
-
 body, html {
-  height: 100%; /* Full height */
+  height: 100%;
   margin: 0;
   padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center; /* Center vertically */
+  background-color: #f0f0f0;
+}
 
-  
-}.App {
+.App {
   text-align: center;
   font-family: 'Arial', sans-serif;
   color: #333;
-  background-color: #f4f4f8;
-  padding: 80px;
-  width: 80%; /* Adjust the width as needed */
-  max-width: 1200px; /* Or whatever max-width you prefer */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Optional: adds shadow for better focus */
-  margin: auto; /* Ensures that the app is centered horizontally */
+  padding: 20px;
+  width: 90%;
+  max-width: 1200px;
+  margin: 80px auto 0;
   display: flex;
-  flex-direction: column; /* Stack children vertically */
+  flex-direction: column;
 }
 
 .app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   background-color: #4a6fa5;
   color: white;
-  padding: 10px 0;
-  margin-bottom: 20px;
+  padding: 15px 0;
+  z-index: 1000;
 }
+
+.MuiFormGroup-root {
+  display: flex;
+  justify-content: center;
+  margin: 30px 0;
+}
+
+.MuiFormControlLabel-root {
+  margin: 0 10px;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.MuiFormControlLabel-root:nth-child(1) { background-color: #e6f2ff; }
+.MuiFormControlLabel-root:nth-child(2) { background-color: #fff0e6; }
+.MuiFormControlLabel-root:nth-child(3) { background-color: #e6ffe6; }
 
 .input-section {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 30px;
 }
 
 .input-section input[type="text"] {
-  padding: 10px;
-  border-radius: 5px;
+  padding: 15px;
+  border-radius: 6px;
   border: 1px solid #ccc;
-  width: 20%;
+  width: 18%;
   font-size: 16px;
 }
 
 .input-section button {
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 15px 25px;
+  border-radius: 6px;
   border: none;
   background-color: #4a6fa5;
   color: white;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .main-content {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .sentences-list {
   flex: 1;
-  padding: 10px;
+  margin-right: 20px;
 }
 
 .sentence-option {
@@ -73,14 +92,7 @@ body, html {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  font-size: 18px;
-}
-
-.speech-icon {
-  height: 24px;
-  width: 24px;
-  cursor: pointer;
-  margin-left: 10px;
+  font-size: 20px;
 }
 
 .selected-sentence-box {
@@ -88,6 +100,41 @@ body, html {
   background-color: #fff;
   border-radius: 8px;
   border: 1px solid #ddd;
+  padding: 20px;
+  min-height: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
 }
 
+.selected-sentence-box:empty::before {
+  content: "Selected sentence will appear here";
+  color: #999;
+  font-style: italic;
+  font-weight: normal;
+}
 
+.MuiRadio-root { color: #4a6fa5; }
+.MuiRadio-root.Mui-checked { color: #4a6fa5; }
+
+.placeholder {
+  color: #999;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.input-with-mic {
+  display: flex;
+  align-items: center;
+}
+
+.input-with-mic input {
+  flex-grow: 1;
+}
+
+.input-with-mic .MuiIconButton-root {
+  padding: 8px;
+}

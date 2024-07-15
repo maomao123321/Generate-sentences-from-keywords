@@ -1,4 +1,4 @@
-// textToSpeech.js
+// textToSpeech
 import axios from 'axios';
 
 const ELEVENLABS_API_KEY = 'sk_15c564e8b4ca67777776bef6317cc48562d4a8d1c0f46320';

@@ -1,27 +1,85 @@
+import { Mic, VolumeUp } from '@mui/icons-material';
+import { FormControl, FormControlLabel, IconButton, Radio, RadioGroup } from '@mui/material';
+import axios from 'axios';
 import { Configuration, OpenAIApi } from 'openai';
 import React, { useState } from 'react';
 import './App.css';
-import axios from 'axios';
-import { VolumeUp } from '@mui/icons-material';
-import { IconButton } from '@mui/material';
 
 function App() {
   const [keywords, setKeywords] = useState({ keyword1: '', keyword2: '', keyword3: '', keyword4: '' });
   const [sentences, setSentences] = useState([]);
   const [selectedSentence, setSelectedSentence] = useState('');
+  const [selectedIntent, setSelectedIntent] = useState('request');
+
+  const startSpeechRecognition = async (fieldName) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
+  
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+  
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'whisper-1');
+  
+        try {
+          const response = await axios.post(
+            'https://api.openai.com/v1/audio/transcriptions',
+            formData,
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
+          setKeywords(prev => ({ ...prev, [fieldName]: response.data.text }));
+        } catch (error) {
+          console.error('Error in speech recognition:', error);
+        }
+      };
+  
+      mediaRecorder.start();
+      setTimeout(() => mediaRecorder.stop(), 5000); // 录音5秒
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+    }
+  };
 
   const handleKeywordChange = (event) => {
     setKeywords({ ...keywords, [event.target.name]: event.target.value });
   };
 
+  const handleIntentChange = (event) => {
+    setSelectedIntent(event.target.value);
+  };
+
   const handleGenerateSentences = async () => {
     const configuration = new Configuration({
-      apiKey: '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',
+      apiKey: process.env.REACT_APP_OPENAI_API_KEY,
     });
     const openai = new OpenAIApi(configuration);
 
     try {
-      const prompt = `Let's play a game where I give you keywords and you use all of them to generate three simple sentences with each fewer than 11 words : ${keywords.keyword1}, ${keywords.keyword2}, ${keywords.keyword3}, ${keywords.keyword4}. Split sentences with &&.`;
+      let intentPrompt = '';
+      switch(selectedIntent) {
+        case 'request':
+          intentPrompt = 'Generate sentences in the form of requests or polite commands';
+          break;
+        case 'question':
+          intentPrompt = 'Generate sentences in the form of questions';
+          break;
+        case 'fact':
+          intentPrompt = 'Generate sentences stating facts or observations';
+          break;
+      }
+
+      const prompt = `You are a system that helps people with aphasia communicate on a daily basis. ${intentPrompt} using these keywords: ${keywords.keyword1}, ${keywords.keyword2}, ${keywords.keyword3}, ${keywords.keyword4}. Generate exactly three simple, short and independent sentences, each no more than 10 words long. Separate each sentence with ###. Always provide exactly 3 sentences, no more, no less. These 3 sentences should be highly relevant to daily life situations for people with aphasia.`;
 
       const completion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
@@ -29,7 +87,20 @@ function App() {
       });
 
       const reply = completion.data.choices[0].message.content;
-      setSentences(reply.split('&&').map(sentence => sentence.trim()));
+      let generatedSentences = reply.split('###').map(sentence => sentence.trim()).filter(sentence => sentence.length > 0);
+      
+    // make sure 3 sentences
+    while (generatedSentences.length < 3) {
+      // if not enough call api again
+      const additionalCompletion = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
+        messages: [{ "role": "user", "content": `Generate ${3 - generatedSentences.length} more simple sentence(s) related to ${keywords.keyword1}, ${keywords.keyword2}, ${keywords.keyword3}, ${keywords.keyword4}. Each sentence should be simple and no more than 10 words long.` }],
+      });
+      const additionalSentences = additionalCompletion.data.choices[0].message.content.split('.').filter(s => s.trim().length > 0);
+      generatedSentences = [...generatedSentences, ...additionalSentences];
+    }
+      // only keep first 3 sentences if more than 3
+    setSentences(generatedSentences.slice(0, 3));
     } catch (err) {
       console.error(err);
     }
@@ -75,36 +146,59 @@ function App() {
       <header className="app-header">
         <h1>Keywords Generation</h1>
       </header>
-
-      <div className="input-section">
-        <input type="text" name="keyword1" placeholder="Who" value={keywords.keyword1} onChange={handleKeywordChange} />
-        <input type="text" name="keyword2" placeholder="What" value={keywords.keyword2} onChange={handleKeywordChange} />
-        <input type="text" name="keyword3" placeholder="Where" value={keywords.keyword3} onChange={handleKeywordChange} />
-        <input type="text" name="keyword4" placeholder="When" value={keywords.keyword4} onChange={handleKeywordChange} />
-        <button onClick={handleGenerateSentences}>Generate</button>
-      </div>
-
+  
+      <FormControl component="fieldset">
+        <RadioGroup row aria-label="intent" name="intent" value={selectedIntent} onChange={handleIntentChange}>
+          <FormControlLabel value="request" control={<Radio />} label="Raise Request" />
+          <FormControlLabel value="question" control={<Radio />} label="Ask Questions" />
+          <FormControlLabel value="fact" control={<Radio />} label="State Facts" />
+        </RadioGroup>
+      </FormControl>
+  
+<div className="input-section">
+  {['keyword1', 'keyword2', 'keyword3', 'keyword4'].map((field) => (
+    <div key={field} className="input-with-mic">
+      <input
+        type="text"
+        name={field}
+        placeholder={field === 'keyword1' ? 'Who' : field === 'keyword2' ? 'What' : field === 'keyword3' ? 'Where' : 'When'}
+        value={keywords[field]}
+        onChange={handleKeywordChange}
+      />
+      <IconButton onClick={() => startSpeechRecognition(field)}>
+        <Mic />
+      </IconButton>
+    </div>
+  ))}
+  <button onClick={handleGenerateSentences}>Generate</button>
+</div>
+  
       <div className="main-content">
         <div className="sentences-list">
           {sentences.map((sentence, index) => (
-            <div key={index} className="sentence-option">
-              <span onClick={() => setSelectedSentence(sentence)}>{sentence}</span>
-              <IconButton onClick={() => textToSpeech(sentence)} size="small">
+            <div key={index} className="sentence-option" onClick={() => setSelectedSentence(sentence)}>
+              <span>{sentence}</span>
+              <IconButton onClick={(e) => { e.stopPropagation(); textToSpeech(sentence); }} size="small">
                 <VolumeUp />
               </IconButton>
             </div>
           ))}
         </div>
-        {selectedSentence &&
-        <div className="selected-sentence-box" style={{fontSize: "30px"}}>
-          <p>{selectedSentence}</p>
-          <IconButton onClick={() => textToSpeech(selectedSentence)} size="small">
-            <VolumeUp />
-          </IconButton>
-        </div>}
+        
+        <div className="selected-sentence-box">
+          {selectedSentence ? (
+            <>
+              <span>{selectedSentence}</span>
+              <IconButton onClick={() => textToSpeech(selectedSentence)} size="small">
+                <VolumeUp />
+              </IconButton>
+            </>
+          ) : (
+            <span className="placeholder">AI generates sentences here for you</span>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
 export default App;
