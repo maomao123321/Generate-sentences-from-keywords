@@ -1,4 +1,4 @@
-import { Mic, VolumeUp } from '@mui/icons-material';
+import { Mic, Stop, VolumeUp } from '@mui/icons-material';
 import { FormControl, FormControlLabel, IconButton, Radio, RadioGroup } from '@mui/material';
 import axios from 'axios';
 import { Configuration, OpenAIApi } from 'openai';
@@ -10,46 +10,63 @@ function App() {
   const [sentences, setSentences] = useState([]);
   const [selectedSentence, setSelectedSentence] = useState('');
   const [selectedIntent, setSelectedIntent] = useState('request');
+  const [recordingField, setRecordingField] = useState('');
+  const [mediaRecorder, setMediaRecorder] = useState(null);
 
-  const startSpeechRecognition = async (fieldName) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      const audioChunks = [];
-  
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-  
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.webm');
-        formData.append('model', 'whisper-1');
-  
-        try {
-          const response = await axios.post(
-            'https://api.openai.com/v1/audio/transcriptions',
-            formData,
-            {
-              headers: {
-                'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
-                'Content-Type': 'multipart/form-data',
-              },
-            }
-          );
-          setKeywords(prev => ({ ...prev, [fieldName]: response.data.text }));
-        } catch (error) {
-          console.error('Error in speech recognition:', error);
-        }
-      };
-  
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 5000); // 录音5秒
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
+const startSpeechRecognition = async (fieldName) => {
+  try {
+    if (mediaRecorder) {
+      // 如果已经在录音，就停止当前的录音
+      mediaRecorder.stop();
+      return;
     }
-  };
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const newMediaRecorder = new MediaRecorder(stream);
+    const audioChunks = [];
+
+    setRecordingField(fieldName);
+    setMediaRecorder(newMediaRecorder);
+
+    newMediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+
+    newMediaRecorder.onstop = async () => {
+      setRecordingField('');
+      setMediaRecorder(null);
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', 'whisper-1');
+
+      try {
+        const response = await axios.post(
+          'https://api.openai.com/v1/audio/transcriptions',
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+        setKeywords(prev => ({ ...prev, [fieldName]: response.data.text }));
+      } catch (error) {
+        console.error('Error in speech recognition:', error);
+      }
+
+      // 停止所有音轨
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    newMediaRecorder.start();
+  } catch (error) {
+    console.error('Error accessing microphone:', error);
+  }
+};
+
 
   const handleKeywordChange = (event) => {
     setKeywords({ ...keywords, [event.target.name]: event.target.value });
@@ -67,19 +84,23 @@ function App() {
 
     try {
       let intentPrompt = '';
+      let intentExample = ''
       switch(selectedIntent) {
         case 'request':
           intentPrompt = 'Generate sentences in the form of requests or polite commands';
+          intentExample = 'Tomorrow, could you buy groceries at the supermarket? ### Mom, please take me to the supermarket for groceries tomorrow. ### Could we go grocery shopping with mom at the supermarket tomorrow?';
           break;
         case 'question':
           intentPrompt = 'Generate sentences in the form of questions';
+          intentExample = 'Are you going to the supermarket for groceries tomorrow? ### When will mom take me to buy groceries? ### Where does mom usually buy groceries on Saturdays?';
           break;
         case 'fact':
           intentPrompt = 'Generate sentences stating facts or observations';
+          intentExample = 'Mom buys our weekly groceries at the supermarket every Saturday. ### The supermarket near us restocks fresh groceries every morning. ### Tomorrow, mom and I will shop for groceries together.';
           break;
       }
 
-      const prompt = `You are a system that helps people with aphasia communicate on a daily basis. ${intentPrompt} using these keywords: ${keywords.keyword1}, ${keywords.keyword2}, ${keywords.keyword3}, ${keywords.keyword4}. Generate exactly three simple, short and independent sentences, each no more than 10 words long. Separate each sentence with ###. Always provide exactly 3 sentences, no more, no less. These 3 sentences should be highly relevant to daily life situations for people with aphasia.`;
+      const prompt = `You are a system that helps people with speech difficulties to communicate on a daily basis. ${intentPrompt} using these keywords: ${keywords.keyword1}, ${keywords.keyword2}, ${keywords.keyword3}, ${keywords.keyword4}. Generate exactly three simple, short and independent sentences, each no more than 10 words long. Separate each sentence with ###. Always provide exactly 3 sentences, no more, no less. These 3 sentences should be highly relevant to daily life situations for people to use.`;
 
       const completion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
@@ -165,9 +186,17 @@ function App() {
         value={keywords[field]}
         onChange={handleKeywordChange}
       />
-      <IconButton onClick={() => startSpeechRecognition(field)}>
-        <Mic />
-      </IconButton>
+      <IconButton 
+  onClick={() => startSpeechRecognition(field)}
+  style={{ 
+    color: recordingField === field ? 'red' : 'inherit',
+    backgroundColor: 'transparent'
+  }}
+>
+  {recordingField === field ? <Stop /> : <Mic />}
+</IconButton>
+
+
     </div>
   ))}
   <button onClick={handleGenerateSentences}>Generate</button>
@@ -202,3 +231,5 @@ function App() {
   );
 }
 export default App;
+
+
