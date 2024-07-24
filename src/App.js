@@ -1,4 +1,4 @@
-import { Mic, Stop, VolumeUp } from '@mui/icons-material';
+import { Mic, Stop, VolumeUp, ContentCopy } from '@mui/icons-material';
 import { FormControl, FormControlLabel, IconButton, Radio, RadioGroup } from '@mui/material';
 import axios from 'axios';
 import { Configuration, OpenAIApi } from 'openai';
@@ -162,15 +162,23 @@ const startSpeechRecognition = async (fieldName) => {
     }
   };
 
+  const copyToClipboard = (text) =>{
+    navigator.clipboard.writeText(text).then(() => {
+      console.log('Text copied to clipboard');
+    }, (err) => {
+      console.error('Could not copy text: ', err);
+    });
+  };
+
   return (
     <div className="App">
       <header className="app-header">
-        <h1>Keywords Generation</h1>
+        <h1>Generate Sentences from Words</h1>
       </header>
   
       <FormControl component="fieldset">
         <RadioGroup row aria-label="intent" name="intent" value={selectedIntent} onChange={handleIntentChange}>
-          <FormControlLabel value="request" control={<Radio />} label="Raise Request" />
+          <FormControlLabel value="request" control={<Radio />} label="Make Request" />
           <FormControlLabel value="question" control={<Radio />} label="Ask Questions" />
           <FormControlLabel value="fact" control={<Radio />} label="State Facts" />
         </RadioGroup>
@@ -195,11 +203,10 @@ const startSpeechRecognition = async (fieldName) => {
 >
   {recordingField === field ? <Stop /> : <Mic />}
 </IconButton>
-
-
     </div>
   ))}
   <button onClick={handleGenerateSentences}>Generate</button>
+  <span className="note">click again to generate new</span>
 </div>
   
       <div className="main-content">
@@ -218,12 +225,17 @@ const startSpeechRecognition = async (fieldName) => {
           {selectedSentence ? (
             <>
               <span>{selectedSentence}</span>
+              <div>
               <IconButton onClick={() => textToSpeech(selectedSentence)} size="small">
                 <VolumeUp />
               </IconButton>
+              <IconButton onClick={() => copyToClipboard(selectedSentence)} size="small">
+                <ContentCopy />
+              </IconButton>
+              </div>
             </>
           ) : (
-            <span className="placeholder">AI generates sentences here for you</span>
+            <span className="placeholder">AI generates sentences from your keywords. <br></br><br></br>More words, more accurately. <br></br><br></br> Click one sentence on left.</span>
           )}
         </div>
       </div>
