@@ -214,7 +214,7 @@ const startSpeechRecognition = async (fieldName) => {
           {sentences.map((sentence, index) => (
             <div key={index} className="sentence-option" onClick={() => setSelectedSentence(sentence)}>
               <span>{sentence}</span>
-              <IconButton onClick={(e) => { e.stopPropagation(); textToSpeech(sentence); }} size="small">
+              <IconButton onClick={(e) => { e.stopPropagation(); textToSpeech(sentence); }} size="large">
                 <VolumeUp />
               </IconButton>
             </div>
@@ -226,16 +226,16 @@ const startSpeechRecognition = async (fieldName) => {
             <>
               <span>{selectedSentence}</span>
               <div>
-              <IconButton onClick={() => textToSpeech(selectedSentence)} size="small">
-                <VolumeUp />
+              <IconButton onClick={() => textToSpeech(selectedSentence)}>
+                <VolumeUp sx={{fontSize: 40}} />
               </IconButton>
-              <IconButton onClick={() => copyToClipboard(selectedSentence)} size="small">
-                <ContentCopy />
+              <IconButton onClick={() => copyToClipboard(selectedSentence)}>
+                <ContentCopy sx={{fontSize: 40}}/>
               </IconButton>
               </div>
             </>
           ) : (
-            <span className="placeholder">AI generates sentences from your keywords. <br></br><br></br>More words, more accurately. <br></br><br></br> Click one sentence on left.</span>
+            <span className="placeholder">AI generates sentences from your keywords. <br></br><br></br>More words, more accuracy. <br></br><br></br> Click one sentence on left.</span>
           )}
         </div>
       </div>
