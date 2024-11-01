@@ -1,4 +1,4 @@
-import { Mic, Stop, VolumeUp, ContentCopy } from '@mui/icons-material';
+import { ContentCopy, Mic, Stop, VolumeUp } from '@mui/icons-material';
 import { FormControl, FormControlLabel, IconButton, Radio, RadioGroup } from '@mui/material';
 import axios from 'axios';
 import { Configuration, OpenAIApi } from 'openai';
@@ -130,12 +130,16 @@ const startSpeechRecognition = async (fieldName) => {
   const textToSpeech = async (text) => {
     try {
       const response = await axios.post(
-        'https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM',
-        { text },
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: text,
+          voice: 'alloy',
+          speed: 1.0
+        },
         {
           headers: {
-            'Accept': 'audio/mpeg',
-            'xi-api-key': 'sk_15c564e8b4ca67777776bef6317cc48562d4a8d1c0f46320',
+            'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
             'Content-Type': 'application/json'
           },
           responseType: 'arraybuffer'
@@ -151,9 +155,23 @@ const startSpeechRecognition = async (fieldName) => {
     } catch (error) {
       console.error('Error in text-to-speech:', error);
       if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-        console.error('Response headers:', error.response.headers);
+        // Try to decode the error message if it's in the response
+        let errorMessage = 'Unknown error occurred';
+        if (error.response.data instanceof ArrayBuffer) {
+          const decoder = new TextDecoder();
+          try {
+            const text = decoder.decode(error.response.data);
+            const jsonError = JSON.parse(text);
+            errorMessage = jsonError.error?.message || text;
+          } catch (e) {
+            errorMessage = 'Failed to decode error message';
+          }
+        }
+        console.error('Error details:', {
+          message: errorMessage,
+          status: error.response.status,
+          headers: error.response.headers
+        });
       } else if (error.request) {
         console.error('No response received:', error.request);
       } else {
